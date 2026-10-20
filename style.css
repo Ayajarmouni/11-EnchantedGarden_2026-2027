@@ -141,6 +141,13 @@ kbd { border: 1px solid rgba(255, 208, 233, .27); border-radius: 3px; padding: 2
 .world-label { color: #e3e7d9; }.world-dot { width: 5px; height: 5px; margin-right: 6px; }
 
 .objective-arrow { position: absolute; z-index: 3; color: #fff0a8; font-size: 28px; line-height: 1; text-shadow: 0 0 14px #ff9fd3; pointer-events: none; }
+.tutorial-panel { position: absolute; z-index: 5; top: 82px; left: 50%; width: min(430px, calc(100% - 32px)); padding: 15px 18px 12px; transform: translateX(-50%); border-radius: 5px; }
+.tutorial-panel .eyebrow { margin: 0 0 7px; color: var(--gold); }
+.tutorial-panel h2 { margin: 0 0 5px; color: var(--mint); font: 20px "Playfair Display", Georgia, serif; }
+.tutorial-panel > p:not(.eyebrow) { margin: 0; color: #e3d8e1; font-size: 11px; line-height: 1.5; }
+.tutorial-progress { height: 3px; margin: 11px 0 9px; overflow: hidden; background: rgba(255,255,255,.12); }
+.tutorial-progress span { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #ef8bc3, #d4a1ff, #f5d48c); transition: width .25s ease; }
+.tutorial-panel > button { display: block; margin-left: auto; color: #d8c5d3; }
 .interaction-prompt { position: absolute; z-index: 4; transform: translate(-50%, -100%); padding: 8px 10px; border: 1px solid rgba(255, 195, 226, .34); border-radius: 3px; background: rgba(39, 24, 43, .92); color: #fff1f8; font: 9px "DM Mono", monospace; white-space: nowrap; pointer-events: none; }
 .ward-status { position: absolute; z-index: 3; left: 50%; bottom: 74px; transform: translateX(-50%); padding: 8px 11px; border: 1px solid rgba(255, 195, 226, .3); background: rgba(39, 24, 43, .86); color: #ffe5f3; font: 9px "DM Mono", monospace; white-space: nowrap; pointer-events: none; }
 .pause-overlay { position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 18px 22px; color: #ffe7f4; font: 12px "DM Mono", monospace; letter-spacing: .12em; text-align: center; }
@@ -196,5 +203,7 @@ kbd { border: 1px solid rgba(255, 208, 233, .27); border-radius: 3px; padding: 2
   .objective-guide { font-size: 8px; }
   .nearby-guide { padding: 6px; font-size: 8px; }
   .interaction-prompt { max-width: calc(100vw - 24px); white-space: normal; text-align: center; }
+  .tutorial-panel { top: 66px; padding: 12px 14px 10px; }
+  .tutorial-panel h2 { font-size: 18px; }
   .ward-status { bottom: 58px; font-size: 8px; }
 }

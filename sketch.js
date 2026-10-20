@@ -32,6 +32,8 @@ let waveNumber = 1;
 let wavePending = 0;
 let corruptionPatches = [];
 let bestTimes = [];
+let tutorialActive = false;
+let tutorialStep = -1;
 const gardenSettings = {
   fairySpeed: 4.2,
   fairyForce: 0.2,
@@ -46,6 +48,25 @@ const gardenSettings = {
 };
 const PREFERENCE_KEY = "enchantedGarden.preferences.v1";
 const BEST_TIMES_KEY = "enchantedGarden.bestTimes.v1";
+const TUTORIAL_KEY = "enchantedGarden.tutorialCompleted.v1";
+const TUTORIAL_STEPS = [
+  {
+    title: "Déplacer la fée",
+    copy: "Cliquez ou touchez un endroit du jardin pour envoyer la fée vers cette destination."
+  },
+  {
+    title: "Récolter un fragment",
+    copy: "Cliquez près d’un cristal lumineux. La fée le ramassera automatiquement en passant à côté."
+  },
+  {
+    title: "Nourrir une fleur",
+    copy: "Approchez-vous d’une fleur endormie et appuyez sur E pour lui offrir le fragment."
+  },
+  {
+    title: "Protéger un esprit",
+    copy: "Approchez-vous d’un esprit libre et appuyez sur F pour le protéger."
+  }
+];
 const LEVELS = [
   { name: "CHAPITRE I · LE JARDIN ENDORMI", world: "VALLÉE DES LUCIOLES", duration: 30, background: ["#fff1fb", "#d9f4dc", "#b5e6d7"] },
   { name: "CHAPITRE II · LE BOSQUET ROSÉ", world: "BOSQUET DES PÉTALES", duration: 27, background: ["#fff0f8", "#f5d8eb", "#c6e8d9"] },
@@ -75,11 +96,13 @@ function setup() {
   toastElement = document.querySelector("#toast");
   gardenAudio = new GardenAudio();
   loadGardenPreferences();
+  loadTutorialState();
   gardenAudio.setMusicVolume(gardenSettings.musicVolume);
   loadBestTimes();
   initializeGarden();
   bindInterface();
   syncSettingControls();
+  renderTutorial();
   describe("Jeu de jardin enchanté : une fée récolte des cristaux, réveille des fleurs et protège des esprits contre des ombres autonomes.");
 }
 
@@ -164,7 +187,9 @@ function initializeGarden(nextLevel = levelIndex, newRun = true) {
     assignHomeTrail(spirit);
     spirits.push(spirit);
   }
-  shadows = Array.from({ length: Math.min(1, gardenSettings.shadowLimit) }, (_, index) => createShadow(index));
+  shadows = tutorialActive
+    ? []
+    : Array.from({ length: Math.min(1, gardenSettings.shadowLimit) }, (_, index) => createShadow(index));
   for (let index = 0; index < 28; index += 1) {
     fireflies.push(new GardenFirefly(random(width * 0.29, width * 0.82), random(height * 0.22, height * 0.83), index));
   }
@@ -224,6 +249,7 @@ function bindInterface() {
     if (levelIndex < LEVELS.length - 1) initializeGarden(levelIndex + 1, false);
   });
   document.querySelector("#pause-toggle").addEventListener("click", togglePause);
+  document.querySelector("#tutorial-skip").addEventListener("click", () => finishTutorial(true));
   document.querySelector("#debug-toggle").addEventListener("click", event => {
     gameDebug = !gameDebug;
     event.currentTarget.setAttribute("aria-pressed", String(gameDebug));
@@ -407,6 +433,58 @@ function loadGardenPreferences() {
   }
 }
 
+function loadTutorialState() {
+  try {
+    tutorialActive = localStorage.getItem(TUTORIAL_KEY) !== "true";
+    tutorialStep = tutorialActive ? 0 : -1;
+  } catch (error) {
+    tutorialActive = true;
+    tutorialStep = 0;
+    console.warn("Impossible de charger la progression du tutoriel.", error);
+  }
+}
+
+function renderTutorial() {
+  const panel = document.querySelector("#tutorial-panel");
+  panel.hidden = !tutorialActive;
+  if (!tutorialActive) return;
+  const step = TUTORIAL_STEPS[tutorialStep];
+  document.querySelector("#tutorial-step-count").textContent =
+    `ÉTAPE ${tutorialStep + 1} / ${TUTORIAL_STEPS.length}`;
+  document.querySelector("#tutorial-title").textContent = step.title;
+  document.querySelector("#tutorial-copy").textContent = step.copy;
+  document.querySelector("#tutorial-progress-fill").style.width =
+    `${(tutorialStep / TUTORIAL_STEPS.length) * 100}%`;
+}
+
+function advanceTutorial(expectedStep) {
+  if (!tutorialActive || tutorialStep !== expectedStep) return;
+  tutorialStep += 1;
+  if (tutorialStep >= TUTORIAL_STEPS.length) {
+    finishTutorial();
+    return;
+  }
+  renderTutorial();
+}
+
+function finishTutorial(skipped = false) {
+  if (!tutorialActive) return;
+  tutorialActive = false;
+  tutorialStep = -1;
+  document.querySelector("#tutorial-panel").hidden = true;
+  try {
+    localStorage.setItem(TUTORIAL_KEY, "true");
+  } catch (error) {
+    console.warn("Impossible d’enregistrer la progression du tutoriel.", error);
+  }
+  if (shadows.length === 0) {
+    shadows.push(createShadow(0));
+    applyDifficulty();
+  }
+  showToast(skipped ? "Tutoriel ignoré · le jardin vous attend" : "Tutoriel terminé · à vous de jouer !");
+  checkVictory();
+}
+
 function saveGardenPreferences() {
   try {
     localStorage.setItem(PREFERENCE_KEY, JSON.stringify({
@@ -488,6 +566,7 @@ function setFairyDestinationFromPointer(x, y) {
   if (gameEnded || gamePaused || !fairy) return;
   const destination = createVector(constrain(x, 14, width - 14), constrain(y, 14, height - 14));
   fairies.forEach(agent => agent.setDestination(destination));
+  advanceTutorial(0);
 }
 
 function drawFairyDestination() {
@@ -547,9 +626,9 @@ function draw() {
       }
       updateCrystals(dt);
       updateFlowers(dt);
-      updateCorruption(dt);
+      if (!tutorialActive) updateCorruption(dt);
       updateSpirits(dt);
-      updateShadows(dt);
+      if (!tutorialActive) updateShadows(dt);
       updateFireflies();
       updateButterflies();
       checkVictory();
@@ -643,6 +722,7 @@ function updateCrystals(dt) {
       fairy.energy = Math.min(fairy.maxEnergy, fairy.energy + 1);
       gardenAudio.play("crystal");
       showToast(`Fragment récolté · ${fairy.crystalInventory} en poche`);
+      advanceTutorial(1);
     }
   }
 }
@@ -672,7 +752,8 @@ function wakeNearbyFlower() {
     return;
   }
   fairy.crystalInventory -= 1;
-  flower.feedCrystal();
+  if (!flower.feedCrystal()) return;
+  advanceTutorial(2);
   if (!flower.awake) {
     gardenAudio.play("crystal");
     showToast(`Énergie florale · ${flower.crystalsFed}/${flower.crystalsNeeded} fragments`);
@@ -736,6 +817,7 @@ function protectNearbySpirit() {
   gardenAudio.play("rescue");
   gardenAudio.play("reward");
   showToast("Esprit protégé · +2 souvenirs magiques");
+  advanceTutorial(3);
 }
 
 function updateSpirits(dt) {
@@ -905,7 +987,7 @@ function updateInteractionPrompt() {
     actions.push(threatened ? "Éloignez l’ombre pour protéger" : "<kbd>F</kbd> Protéger l’esprit");
   }
   prompt.innerHTML = actions.join("　·　");
-  prompt.hidden = actions.length === 0 || gamePaused || gameEnded;
+  prompt.hidden = actions.length === 0 || gamePaused || gameEnded || tutorialActive;
   if (!prompt.hidden) {
     const promptFairy = nearestFairyTo((flower || spirit).pos) || fairy;
     prompt.style.left = `${Math.max(120, Math.min(width - 120, promptFairy.pos.x))}px`;
@@ -916,6 +998,7 @@ function updateInteractionPrompt() {
 }
 
 function checkVictory() {
+  if (tutorialActive) return;
   if (flowers.length > 0 && flowers.every(flower => flower.awake)) endGame(true);
 }
 

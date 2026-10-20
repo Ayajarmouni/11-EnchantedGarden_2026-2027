@@ -42,9 +42,11 @@ function createGardenContext() {
     GardenFlower: Flower,
     MagicCrystal: Crystal,
     GardenFairy: Fairy,
+    p5: { Vector: { dist: (first, second) => Math.hypot(first.x - second.x, first.y - second.y) } },
     TWO_PI: Math.PI * 2,
     width: 1000,
     height: 800,
+    constrain: (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value)),
     createVector: (x, y) => ({ x, y, copy() { return { x: this.x, y: this.y }; } }),
     color: value => value,
     console
@@ -52,6 +54,12 @@ function createGardenContext() {
   vm.runInContext(sketch, context);
   context.savedValues = values;
   return context;
+}
+
+function setGardenState(context, name, value) {
+  context.__testValue = value;
+  vm.runInContext(`${name} = __testValue`, context);
+  delete context.__testValue;
 }
 
 test("flower slider range is 1–5 and shadow slider range is 1–6", () => {
@@ -115,6 +123,114 @@ test("all flowers blooming wins the garden without requiring spirit rescues", ()
   vm.runInContext("flowers[1].awake = true; checkVictory()", context);
   assert.equal(vm.runInContext("lastOutcome", context), true);
   assert.equal(vm.runInContext("gameEnded", context), true);
+});
+
+test("first visit opens the tutorial and saved completion skips it", () => {
+  const context = createGardenContext();
+  context.loadTutorialState();
+  context.renderTutorial();
+  assert.equal(vm.runInContext("tutorialActive", context), true);
+  assert.equal(vm.runInContext("tutorialStep", context), 0);
+  assert.equal(context.document.querySelector("#tutorial-panel").hidden, false);
+  assert.equal(context.document.querySelector("#tutorial-title").textContent, "Déplacer la fée");
+
+  context.savedValues.set("enchantedGarden.tutorialCompleted.v1", "true");
+  context.loadTutorialState();
+  context.renderTutorial();
+  assert.equal(vm.runInContext("tutorialActive", context), false);
+  assert.equal(context.document.querySelector("#tutorial-panel").hidden, true);
+});
+
+test("tutorial advances only when movement, collection, feeding, and protection succeed", () => {
+  const context = createGardenContext();
+  context.loadTutorialState();
+  setGardenState(context, "width", 100);
+  setGardenState(context, "height", 100);
+  setGardenState(context, "gameEnded", false);
+  setGardenState(context, "gamePaused", false);
+  const fairy = {
+    pos: { x: 30, y: 40 },
+    crystalInventory: 0,
+    energy: 1,
+    maxEnergy: 3,
+    setDestination(point) { this.destination = point; }
+  };
+  setGardenState(context, "fairy", fairy);
+  setGardenState(context, "fairies", [fairy]);
+  setGardenState(context, "gardenAudio", { play() {} });
+  context.showToast = () => {};
+  setGardenState(context, "shadows", []);
+  context.createShadow = () => ({});
+  context.applyDifficulty = () => {};
+  context.checkVictory = () => {};
+
+  context.setFairyDestinationFromPointer(30, 40);
+  assert.equal(vm.runInContext("tutorialStep", context), 1);
+
+  setGardenState(context, "crystalsFound", 0);
+  setGardenState(context, "GOAL_CRYSTALS", 1);
+  setGardenState(context, "crystals", [{
+    pos: { x: 30, y: 40 },
+    collected: false,
+    update() {},
+    collect() { this.collected = true; }
+  }]);
+  context.updateCrystals(0);
+  assert.equal(fairy.crystalInventory, 1);
+  assert.equal(vm.runInContext("tutorialStep", context), 2);
+
+  const flower = {
+    pos: { x: 30, y: 40 },
+    awake: false,
+    crystalsFed: 0,
+    crystalsNeeded: 2,
+    feedCrystal() { this.crystalsFed += 1; return true; }
+  };
+  setGardenState(context, "flowers", [flower]);
+  setGardenState(context, "spirits", []);
+  context.wakeNearbyFlower();
+  assert.equal(flower.crystalsFed, 1);
+  assert.equal(vm.runInContext("tutorialStep", context), 3);
+
+  const spirit = { pos: { x: 30, y: 40 }, rescued: false, health: 50 };
+  setGardenState(context, "spirits", [spirit]);
+  setGardenState(context, "rescuedTotal", 0);
+  setGardenState(context, "rewardTotal", 0);
+  context.protectNearbySpirit();
+  assert.equal(spirit.rescued, true);
+  assert.equal(vm.runInContext("tutorialActive", context), false);
+  assert.equal(context.savedValues.get("enchantedGarden.tutorialCompleted.v1"), "true");
+  assert.equal(vm.runInContext("shadows.length", context), 1);
+});
+
+test("tutorial hides nearby interaction prompts and delays victory until it ends", () => {
+  const context = createGardenContext();
+  const fairy = { pos: { x: 0, y: 0 }, crystalInventory: 1, wardTimer: 0 };
+  const flower = {
+    pos: { x: 5, y: 0 },
+    awake: false,
+    crystalsFed: 0,
+    crystalsNeeded: 2
+  };
+  setGardenState(context, "fairy", fairy);
+  setGardenState(context, "fairies", [fairy]);
+  setGardenState(context, "flowers", [flower]);
+  setGardenState(context, "spirits", []);
+  setGardenState(context, "shadows", []);
+  setGardenState(context, "tutorialActive", true);
+  setGardenState(context, "gamePaused", false);
+  setGardenState(context, "gameEnded", false);
+  context.updateInteractionPrompt();
+  assert.equal(context.document.querySelector("#interaction-prompt").hidden, true);
+
+  let won = false;
+  context.endGame = outcome => { won = outcome; };
+  context.checkVictory();
+  assert.equal(won, false);
+  flower.awake = true;
+  setGardenState(context, "tutorialActive", false);
+  context.checkVictory();
+  assert.equal(won, true);
 });
 
 test("every DOM id used by the scene exists in the game page", () => {

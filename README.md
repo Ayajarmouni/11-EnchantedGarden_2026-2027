@@ -33,6 +33,12 @@ Le jeu est aussi une démonstration interactive des comportements de steering
 étudiés dans les dossiers 1 à 8. Les préférences et les meilleurs temps sont
 sauvegardés dans le navigateur.
 
+À la première visite, un tutoriel interactif guide le joueur : déplacer la fée,
+ramasser un cristal, nourrir une fleur et protéger un esprit. Chaque étape se
+valide en réalisant l’action correspondante. Le bouton **Passer le tutoriel**
+permet de commencer directement; son achèvement ou son passage est mémorisé
+dans le navigateur. Les vagues d’ombres attendent la fin du tutoriel.
+
 ## Lancer le jeu
 
 Depuis la racine du dépôt, démarrer un serveur HTTP :
@@ -55,6 +61,9 @@ halos lumineux et des points scintillants.
   l'écran de victoire termine la partie.
 - Cliquez ou touchez le jardin pour envoyer toutes les fées vers ce point. Le
   repère scintillant montre la destination; elles ralentissent en s'en approchant.
+- À la première visite, suivez les quatre étapes du tutoriel interactif ou
+  choisissez **Passer le tutoriel**. Les ombres et leurs vagues restent en
+  attente pendant le tutoriel afin de laisser le temps d’apprendre les commandes.
 - Les fées récoltent automatiquement les cristaux en passant près d'eux. Un
   cristal réapparaît après quelques secondes : il faut donc parfois repasser
   pour obtenir assez de fragments.
