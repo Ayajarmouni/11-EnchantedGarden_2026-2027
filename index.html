@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#281a2b">
+    <title>Enchanted Garden — La gardienne des lucioles</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="libraries/p5.min.js"></script>
+    <script src="path.js"></script>
+    <script src="vehicle.js"></script>
+    <script src="debug-vehicle.js"></script>
+    <script src="flower.js"></script>
+    <script src="crystal.js"></script>
+    <script src="corruption.js"></script>
+    <script src="fairy.js"></script>
+    <script src="spirit.js"></script>
+    <script src="shadow.js"></script>
+    <script src="firefly.js"></script>
+    <script src="butterfly.js"></script>
+    <script src="audio.js"></script>
+    <script src="sketch.js"></script>
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="Enchanted Garden, accueil">
+          <span class="brand-mark" aria-hidden="true">✳</span>
+          <span>ENCHANTED <b>GARDEN</b></span>
+        </a>
+        <div class="chapter"><span id="level-name">CHAPITRE I · LE JARDIN ENDORMI</span></div>
+        <button id="sound-toggle" class="icon-button" type="button" aria-label="Activer ou couper le son">♫ <span>SON</span></button>
+      </header>
+
+      <details class="game-settings">
+        <summary><span aria-hidden="true">⚙</span> RÉGLAGES</summary>
+        <div class="settings-card glass">
+          <p class="eyebrow">ÉQUILIBRE DU JARDIN</p>
+          <label class="setting-control" for="music-volume">
+            <span>Volume de la musique <output id="music-volume-value">35 %</output></span>
+            <input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.35">
+          </label>
+          <label class="setting-control" for="fairy-speed">
+            <span>Vitesse de la fée <output id="fairy-speed-value">4,2</output></span>
+            <input id="fairy-speed" type="range" min="1" max="8" step="0.1" value="4.2">
+          </label>
+          <label class="setting-control" for="fairy-count">
+            <span>Nombre de fées <output id="fairy-count-value">1</output></span>
+            <input id="fairy-count" type="range" min="1" max="6" step="1" value="1">
+          </label>
+          <label class="setting-control" for="fairy-force">
+            <span>Force de steering de la fée <output id="fairy-force-value">0,20</output></span>
+            <input id="fairy-force" type="range" min="0.05" max="0.5" step="0.01" value="0.2">
+          </label>
+          <label class="setting-control" for="spirit-speed">
+            <span>Vitesse des esprits <output id="spirit-speed-value">1,7</output></span>
+            <input id="spirit-speed" type="range" min="0.5" max="4" step="0.1" value="1.7">
+          </label>
+          <label class="setting-control" for="shadow-speed">
+            <span>Vitesse des ombres <output id="shadow-speed-value">1,9</output></span>
+            <input id="shadow-speed" type="range" min="0.5" max="4" step="0.1" value="1.9">
+          </label>
+          <label class="setting-control" for="shadow-perception">
+            <span>Portée de perception des ombres <output id="shadow-perception-value">150 px</output></span>
+            <input id="shadow-perception" type="range" min="60" max="220" step="5" value="150">
+          </label>
+          <label class="setting-control" for="firefly-cohesion">
+            <span>Cohésion des lucioles <output id="firefly-cohesion-value">0,42</output></span>
+            <input id="firefly-cohesion" type="range" min="0" max="2" step="0.01" value="0.42">
+          </label>
+          <label class="setting-control" for="wave-interval">
+            <span>Intervalle entre les vagues <output id="wave-interval-value">30 s</output></span>
+            <input id="wave-interval" type="range" min="15" max="60" step="1" value="30">
+          </label>
+          <label class="setting-control" for="garden-count">
+            <span>Nombre de fleurs <output id="garden-count-value">4</output></span>
+            <input id="garden-count" type="range" min="1" max="5" step="1" value="4">
+            <small>Le jardin contient le même nombre de cristaux.</small>
+          </label>
+          <label class="setting-control" for="shadow-limit">
+            <span>Maximum d’ombres simultanées <output id="shadow-limit-value">3</output></span>
+            <input id="shadow-limit" type="range" min="1" max="6" step="1" value="3">
+          </label>
+          <label class="setting-control select-setting" for="difficulty">
+            <span>Difficulté</span>
+            <select id="difficulty">
+              <option value="calm">Détente</option>
+              <option value="adventure" selected>Aventure</option>
+            </select>
+          </label>
+          <label class="setting-control select-setting" for="time-scale">
+            <span>Vitesse de simulation</span>
+            <select id="time-scale">
+              <option value="0.5">Ralenti · ½×</option>
+              <option value="1" selected>Normal · 1×</option>
+              <option value="1.5">Accéléré · 1,5×</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
+      <section class="hud" aria-label="Progression du jardin">
+        <div class="quest-card glass">
+          <div class="eyebrow"><span class="status-dot"></span> OBJECTIF EN COURS</div>
+          <h1 id="objective-title">Rallumez la<br><em>lueur ancienne</em></h1>
+          <p id="objective-copy" class="quest-copy">Les ombres ont envahi le jardin. Retrouvez les cristaux et réveillez les fleurs.</p>
+          <div id="objective-guide" class="objective-guide">Cherchez un fragment lumineux dans le jardin.</div>
+          <div class="inventory-note">FRAGMENTS PORTÉS <b id="crystal-inventory">0</b></div>
+          <div class="nearby-guide">
+            <span id="nearby-icon" aria-hidden="true">✧</span>
+            <span id="nearby-label">Recherche d’un cristal…</span>
+            <b id="nearby-distance">—</b>
+          </div>
+          <div class="quest-list">
+            <div class="quest-row"><span class="quest-icon crystal-icon">✧</span><span>Fragments trouvés</span><b id="crystal-count">0 / 10</b></div>
+            <div class="quest-row"><span class="quest-icon flower-icon">✿</span><span>Fleurs éveillées</span><b id="flower-count">0 / 4</b></div>
+            <div class="quest-row"><span class="quest-icon spirit-icon">◉</span><span>Esprits protégés</span><b id="spirit-count">0 / 3</b></div>
+          </div>
+          <div class="progress-track"><span id="progress-fill"></span></div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card glass"><span class="stat-label">ÉNERGIE</span><div class="energy-value"><span id="energy-count">3</span><small>✦</small></div><div class="energy-meter"><span id="energy-fill"></span></div></div>
+          <div class="stat-card glass"><span class="stat-label">SOUVENIRS</span><div class="spirit-value"><span id="reward-count">0</span><small> ✧</small></div><div class="gene-note"><span id="living-count">3</span> esprits · gén. <span id="generation-count">1</span></div><div class="gene-note" id="gene-note">lignée des lucioles</div></div>
+        </div>
+        <div class="run-status glass"><span>VAGUE <b id="wave-count">1</b></span><span>RECORD <b id="best-time">—</b></span></div>
+      </section>
+
+      <aside class="right-hud glass" aria-label="Instructions">
+        <div class="compass-mark">✧</div>
+        <p class="eyebrow">VOTRE RÔLE</p>
+        <p class="role-title">Fée gardienne</p>
+        <p class="role-copy">Votre lumière apaise les esprits et repousse les ombres.</p>
+        <div class="right-divider"></div>
+        <div class="mini-tip"><span>01</span><p>Ramassez les fragments et apportez-en plusieurs aux fleurs.</p></div>
+        <div class="mini-tip"><span>02</span><p>Près d’une fleur, appuyez sur <kbd>E</kbd> pour lui offrir un fragment.</p></div>
+        <div class="mini-tip"><span>03</span><p>Appuyez sur <kbd>F</kbd> près d’un esprit pour le protéger.</p></div>
+        <div class="mini-tip"><span>04</span><p><kbd>ESPACE</kbd> libère une onde contre les ombres.</p></div>
+        <div class="ai-note"><span>✺</span><p>Chaque être du jardin choisit seul sa route.</p></div>
+      </aside>
+
+      <div class="bottom-left glass">
+        <span class="control-chip"><span class="mouse-icon">⌖</span> CLIC / TOUCHER POUR VOYAGER</span>
+        <span class="control-separator"></span>
+        <span class="control-chip"><kbd>E</kbd> NOURRIR</span>
+        <span class="control-separator"></span>
+        <span class="control-chip"><kbd>F</kbd> PROTÉGER</span>
+        <span class="control-separator"></span>
+        <span class="control-chip"><kbd>ESPACE</kbd> ONDE</span>
+        <span class="control-separator"></span>
+        <button id="pause-toggle" class="control-button" type="button" aria-pressed="false">Ⅱ PAUSE</button>
+        <button id="debug-toggle" class="control-button" type="button" aria-pressed="false">◇ IA · G</button>
+      </div>
+
+      <div class="bottom-right">
+        <span class="world-label"><span class="world-dot"></span> VALLÉE DES LUCIOLES</span>
+        <span id="world-clock">JOUR 01 · 00:00</span>
+      </div>
+
+      <div id="objective-arrow" class="objective-arrow" aria-hidden="true" hidden><span>➤</span></div>
+      <div id="interaction-prompt" class="interaction-prompt" aria-live="polite" hidden></div>
+      <div id="ward-status" class="ward-status" hidden></div>
+      <div id="pause-overlay" class="pause-overlay glass" hidden>JARDIN EN PAUSE <span>· Cliquez sur Reprendre</span></div>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <section id="end-screen" class="end-screen glass" hidden aria-live="polite">
+        <div id="end-sparkle" class="end-sparkle">✧</div>
+        <p class="eyebrow">LE JARDIN SE SOUVIENT</p>
+        <h2 id="end-title">La magie renaît</h2>
+        <p id="end-copy">Grâce à vous, les esprits peuvent danser à nouveau.</p>
+        <div class="end-actions">
+          <button id="restart-button" class="restart-button" type="button">REJOUER <span>↻</span></button>
+          <button id="next-level-button" class="restart-button" type="button" hidden>JARDIN SUIVANT <span>↗</span></button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
